@@ -38,7 +38,7 @@ func (b *LoadBalancer) NextBackend() *Backend {
 	return res
 }
 
-func (b *LoadBalancer) ServerHTTP(w http.ResponseWriter, r *http.Request) {
+func (b *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	backend := b.NextBackend()
 	if backend == nil {
 		http.Error(w, "No backend available", http.StatusServiceUnavailable)
@@ -48,5 +48,25 @@ func (b *LoadBalancer) ServerHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	fmt.Println("Let's create load balancer")
+	b := &LoadBalancer{}
+
+	back1, err := url.Parse("http://localhost:8081")
+	if err != nil {
+		fmt.Printf("url parse error: %v", err)
+	}
+	back2, err := url.Parse("http://localhost:8082")
+	if err != nil {
+		fmt.Printf("url parse error: %v", err)
+	}
+	back3, err := url.Parse("http://localhost:8083")
+	if err != nil {
+		fmt.Printf("url parse error: %v", err)
+	}
+
+	b.AddBackend(&Backend{URL: back1, ReverseProxy: httputil.NewSingleHostReverseProxy(back1)})
+	b.AddBackend(&Backend{URL: back2, ReverseProxy: httputil.NewSingleHostReverseProxy(back2)})
+	b.AddBackend(&Backend{URL: back3, ReverseProxy: httputil.NewSingleHostReverseProxy(back3)})
+
+	fmt.Println("Load balancer started")
+	http.ListenAndServe(":8080", b)
 }
