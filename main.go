@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"sync"
@@ -35,6 +36,15 @@ func (b *LoadBalancer) NextBackend() *Backend {
 	b.next = (b.next + 1) % len(b.backends)
 
 	return res
+}
+
+func (b *LoadBalancer) ServerHTTP(w http.ResponseWriter, r *http.Request) {
+	backend := b.NextBackend()
+	if backend == nil {
+		http.Error(w, "No backend available", http.StatusServiceUnavailable)
+		return
+	}
+	backend.ReverseProxy.ServeHTTP(w, r)
 }
 
 func main() {
