@@ -15,7 +15,7 @@ type Backend struct {
 
 type LoadBalancer struct {
 	backends []*Backend
-	mutex    *sync.Mutex
+	mutex    sync.Mutex
 	next     int
 }
 
