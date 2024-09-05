@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -54,11 +55,13 @@ func main() {
 	if err != nil {
 		fmt.Printf("url parse error: %v", err)
 	}
-	back2, err := url.Parse("http://localhost:8082")
+	var back2 *url.URL
+	back2, err = url.Parse("http://localhost:8082")
 	if err != nil {
 		fmt.Printf("url parse error: %v", err)
 	}
-	back3, err := url.Parse("http://localhost:8083")
+	var back3 *url.URL
+	back3, err = url.Parse("http://localhost:8083")
 	if err != nil {
 		fmt.Printf("url parse error: %v", err)
 	}
@@ -68,5 +71,8 @@ func main() {
 	b.AddBackend(&Backend{URL: back3, ReverseProxy: httputil.NewSingleHostReverseProxy(back3)})
 
 	fmt.Println("Load balancer started")
-	http.ListenAndServe(":8080", b)
+	err = http.ListenAndServe(":8080", b)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
