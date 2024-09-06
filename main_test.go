@@ -6,6 +6,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"reflect"
+	"sync"
 	"testing"
 )
 
@@ -75,5 +76,47 @@ func TestLoadBalancer_ServeHTTP_NoBackends(t *testing.T) {
 	resp := w.Result()
 	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Errorf("Expected status Service Unavailable, got %v", resp.StatusCode)
+	}
+}
+
+func TestLoadBalancer_Concurrency(t *testing.T) {
+	lb := &LoadBalancer{}
+
+	backendURL1, _ := url.Parse("http://localhost:8081")
+	backend1 := &Backend{
+		URL:          backendURL1,
+		ReverseProxy: httputil.NewSingleHostReverseProxy(backendURL1),
+	}
+
+	backendURL2, _ := url.Parse("http://localhost:8082")
+	backend2 := &Backend{
+		URL:          backendURL2,
+		ReverseProxy: httputil.NewSingleHostReverseProxy(backendURL2),
+	}
+
+	lb.AddBackend(backend1)
+	lb.AddBackend(backend2)
+
+	var wg sync.WaitGroup
+	wg.Add(100)
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			defer wg.Done()
+			lb.NextBackend()
+		}()
+	}
+
+	wg.Wait()
+
+	// Check if the load balancer still works correctly after concurrent access
+	next1 := lb.NextBackend()
+	if next1 != backend1 {
+		t.Errorf("Expected backend1, got %v", next1)
+	}
+
+	next2 := lb.NextBackend()
+	if next2 != backend2 {
+		t.Errorf("Expected backend2, got %v", next2)
 	}
 }
