@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
 	"reflect"
@@ -59,5 +61,19 @@ func TestLoadBalancer_NextBackend(t *testing.T) {
 	next3 := lb.NextBackend()
 	if next3 != backend1 {
 		t.Errorf("Expected backend1, got %v", next3)
+	}
+}
+
+func TestLoadBalancer_ServeHTTP_NoBackends(t *testing.T) {
+	lb := &LoadBalancer{}
+
+	req := httptest.NewRequest("GET", "http://example.com", nil)
+	w := httptest.NewRecorder()
+
+	lb.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("Expected status Service Unavailable, got %v", resp.StatusCode)
 	}
 }
