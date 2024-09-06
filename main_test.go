@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -118,5 +119,76 @@ func TestLoadBalancer_Concurrency(t *testing.T) {
 	next2 := lb.NextBackend()
 	if next2 != backend2 {
 		t.Errorf("Expected backend2, got %v", next2)
+	}
+}
+
+func TestLoadBalancer_ServeHTTP(t *testing.T) {
+	lb := &LoadBalancer{}
+
+	backendURL1, _ := url.Parse("http://localhost:8081")
+	backend1 := &Backend{
+		URL:          backendURL1,
+		ReverseProxy: httputil.NewSingleHostReverseProxy(backendURL1),
+	}
+
+	backendURL2, _ := url.Parse("http://localhost:8082")
+	backend2 := &Backend{
+		URL:          backendURL2,
+		ReverseProxy: httputil.NewSingleHostReverseProxy(backendURL2),
+	}
+
+	lb.AddBackend(backend1)
+	lb.AddBackend(backend2)
+
+	// Create a test server to handle the reverse proxy requests
+	backendServer1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Response from backend1"))
+	}))
+	defer backendServer1.Close()
+
+	backendServer2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Response from backend2"))
+	}))
+	defer backendServer2.Close()
+
+	// Update the backend URLs to point to the test servers
+	backendURL1, _ = url.Parse(backendServer1.URL)
+	backendURL2, _ = url.Parse(backendServer2.URL)
+
+	backend1.URL = backendURL1
+	backend2.URL = backendURL2
+
+	// Create a test request
+	req := httptest.NewRequest("GET", "http://example.com", nil)
+	w := httptest.NewRecorder()
+
+	// Serve the request through the load balancer
+	lb.ServeHTTP(w, req)
+
+	// Check the response
+	resp := w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "Response from backend1" {
+		t.Errorf("Expected response from backend1, got %s", string(body))
+	}
+
+	// Serve another request to check round-robin
+	w = httptest.NewRecorder()
+	lb.ServeHTTP(w, req)
+
+	resp = w.Result()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status OK, got %v", resp.StatusCode)
+	}
+
+	body, _ = io.ReadAll(resp.Body)
+	if string(body) != "Response from backend2" {
+		t.Errorf("Expected response from backend2, got %s", string(body))
 	}
 }
