@@ -51,24 +51,19 @@ func (b *LoadBalancer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 	b := &LoadBalancer{}
 
-	back1, err := url.Parse("http://localhost:8081")
-	if err != nil {
-		fmt.Printf("url parse error: %v", err)
-	}
-	var back2 *url.URL
-	back2, err = url.Parse("http://localhost:8082")
-	if err != nil {
-		fmt.Printf("url parse error: %v", err)
-	}
-	var back3 *url.URL
-	back3, err = url.Parse("http://localhost:8083")
-	if err != nil {
-		fmt.Printf("url parse error: %v", err)
+	backends := []string{
+		"http://localhost:8081",
+		"http://localhost:8082",
+		"http://localhost:8083",
 	}
 
-	b.AddBackend(&Backend{URL: back1, ReverseProxy: httputil.NewSingleHostReverseProxy(back1)})
-	b.AddBackend(&Backend{URL: back2, ReverseProxy: httputil.NewSingleHostReverseProxy(back2)})
-	b.AddBackend(&Backend{URL: back3, ReverseProxy: httputil.NewSingleHostReverseProxy(back3)})
+	for _, backendURL := range backends {
+		parsedURL, err := url.Parse(backendURL)
+		if err != nil {
+			log.Fatalf("Failed to parse backend URL %s: %v", backendURL, err)
+		}
+		b.AddBackend(&Backend{URL: parsedURL, ReverseProxy: httputil.NewSingleHostReverseProxy(parsedURL)})
+	}
 
 	fmt.Println("Load balancer started")
 	err = http.ListenAndServe(":8080", b)
