@@ -69,10 +69,12 @@ func main() {
 		Addr:    ":8080",
 		Handler: b,
 	}
-	
-	fmt.Println("Load balancer started")
-	err = http.ListenAndServe(":8080", b)
-	if err != nil {
-		log.Fatal(err)
+
+	go func() {
+		log.Println("Load balancer started at :8080")
+		err = http.ListenAndServe(":8080", b)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
