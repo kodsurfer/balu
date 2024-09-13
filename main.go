@@ -65,6 +65,11 @@ func main() {
 		b.AddBackend(&Backend{URL: parsedURL, ReverseProxy: httputil.NewSingleHostReverseProxy(parsedURL)})
 	}
 
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: b,
+	}
+	
 	fmt.Println("Load balancer started")
 	err = http.ListenAndServe(":8080", b)
 	if err != nil {
