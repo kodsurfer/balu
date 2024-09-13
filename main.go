@@ -71,11 +71,10 @@ func main() {
 
 	go func() {
 		log.Println("Load balancer started at :8080")
-		err = http.ListenAndServe(":8080", b)
-		if err != nil {
+		if err := http.ListenAndServe(":8080", b); err != nil {
 			log.Fatal(err)
 		}
-	}
+	}()
 	
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
