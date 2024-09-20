@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"syncall"
+	"syscall"
 	"time"
 )
 
@@ -80,7 +80,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
